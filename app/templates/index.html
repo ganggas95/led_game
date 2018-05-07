@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>LED Implements</title>
+    <!--Import Google Icon Font-->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <!--Import materialize.css-->
+    <link type="text/css" rel="stylesheet" href="/static/semantic.min.css" media="screen,projection" />
+    <style>
+        .jumlah_loop {
+            width: 40px;
+            margin-left: 20px;
+            text-align: center;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="ui grid">
+        <div class="four wide column">
+            <div class="ui vertical menu fluid">
+                <a class="red active item draggable" data-type="red">
+                    Merah
+                    <div class="ui red left pointing label">
+                        <i class="lightbulb icon"></i>
+                    </div>
+                </a>
+                <a class="yellow active item draggable" data-type="yellow">
+                    Kuning
+                    <div class="ui yellow left pointing label">
+                        <i class="lightbulb icon"></i>
+                    </div>
+                </a>
+                <a class="blue active item draggable" data-type="blue">
+                    Biru
+                    <div class="ui blue left pointing label">
+                        <i class="lightbulb icon"></i>
+                    </div>
+                </a>
+                <a class="teal active item draggable" data-type="loop">
+                    Berulang
+                    <div class="ui teal left pointing label">
+                        <i class="sync icon"></i>
+                    </div>
+                </a>
+                <a class="orange active item draggable" data-type="stop">
+                    Stop Perulangan
+                    <div class="ui orange left pointing label">
+                        <i class="stop icon"></i>
+                    </div>
+                </a>
+                <a class="orange active item draggable" data-type="jeda">
+                    Jeda
+                    <div class="ui orange left pointing label">
+                        <i class="pause icon"></i>
+                    </div>
+                </a>
+            </div>
+            <button class="ui labeled icon button play-btn fluid">
+                <i class="play icon"></i>
+                Play
+            </button>
+            <button class="ui labeled icon button reset-btn fluid">
+                <i class="history icon"></i>
+                Reset
+            </button>
+        </div>
+        <div class="twelve wide column">
+            <div class="ui vertical menu sortable droppable fluid" id="roles">
+            </div>
+        </div>
+    </div>
+
+</body>
+<!--Import jQuery before materialize.js-->
+<script type="text/javascript" src="/static/jquery-3.2.1.min.js"></script>
+<script type="text/javascript" src="/static/socket.io.js"></script>
+<script src="https://code.jquery.com/jquery-1.12.4.js"></script>
+<script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+<script src="/static/jquery.nestable.js"></script>
+<script type="text/javascript" src="/static/semantic.min.js"></script>
+<script type="text/javascript" src="/static/sweetalert.js"></script>
+<script>
+
+    $(".draggable").draggable({
+        // revert: "invalid",
+        stack: ".draggable",
+        helper: 'clone',
+        create: function () {
+            var eq = $(this).index();
+            $(this).attr('data-index', eq);
+        }
+    });
+
+    $(".sortable").sortable({
+        connectWith: '.droppable',
+        cancel: ".ui-state-disabled"
+    });
+
+    var blue_index = 0;
+    var green_index = 0;
+    var red_index = 0;
+    var loop_index = 0;
+
+    $(".droppable").droppable({
+        accept: ".draggable",
+        drop: function (event, ui) {
+            var droppable = $(this);
+            var draggable = ui.draggable;
+
+            var typeEl = draggable.data('type');
+            var loopEl = null;
+
+            buildElement(droppable, typeEl, );
+
+        }
+    });
+
+    var current_stop = null;
+    var current_loop = null;
+    var green_index = 1;
+    var red_index = 1;
+    var blue_index = 1;
+    var loop_index = 1;
+    var stop_index = 1;
+    var jeda_index = 1;
+    function buildElement(parent, tipe) {
+        if (tipe) {
+            if (current_stop == null && current_loop == null && tipe == 'loop') {
+                buildLoopElement(parent, 'loop');
+            } else if (current_stop != null && current_loop == null && tipe == 'stop') {
+                swal("Mulai Perulangan!!!", "Mohon mulai perulangan untuk menambahkan element ini", "error");
+                return;
+            } else if (current_loop != null && current_stop == null && tipe == 'stop') {
+                buildStopElement(parent, 'stop');
+            } else if (current_stop == null && current_loop == null && tipe == 'stop') {
+                swal("Mulai Perulangan!!!", "Mohon mulai perulangan untuk menambahkan element ini", "error");
+                return;
+            }
+            else if (current_loop != null && current_stop == null && tipe == 'loop') {
+                swal("Stop Perulangan!!!", "Mohon Stop perulangan untuk melanjutakan ke perulangan selanjutnya", "error");
+                return;
+            } else if (tipe == 'jeda') {
+                buildJedaElement(parent, 'j');
+            } else {
+                buildLedElement(parent, tipe);
+            }
+        }
+    }
+
+    function buildLoopElement(parent, tipe) {
+        var loopEl = document.createElement('a');
+        loopEl.dataset['tipe'] = tipe;
+        var color = 'orange';
+        color = 'teal'; loopEl.dataset['jumlah'] = 1;
+        loopEl.className = `${color} active item draggable ui-state-disabled`;
+        loopEl.id = `loop-${loop_index}`;
+        var loop = document.createElement('div');
+        var span = document.createElement('span');
+        span.innerHTML = "Berulang";
+        var label = document.createElement('div');
+        label.className = `ui ${color} left pointing label`;
+        var icon = document.createElement('i');
+
+        icon.className = 'sync icon';
+
+        label.appendChild(icon);
+        loopEl.appendChild(span);
+        current_loop = loop_index;
+        var input = document.createElement('input');
+        input.className = 'jumlah_loop';
+        input.type = 'number';
+        input.addEventListener('change', (e) => {
+            var el = $(e.target).context.parentElement;
+            el.dataset['jumlah'] = $(e.target).val();
+        })
+        input.value = loopEl.dataset['jumlah'];
+        loopEl.appendChild(input);
+        loopEl.appendChild(label);
+        parent.append(loopEl);
+        loop_index += 1;
+    }
+
+    function buildStopElement(parent, tipe) {
+        var stopEl = document.createElement('a');
+        stopEl.dataset['tipe'] = tipe;
+        stopEl.className = `orange active item draggable ui-state-disabled`;
+        var span = document.createElement('span');
+        span.innerHTML = "Stop Perulangan";
+        stop_index += 1;
+        var label = document.createElement('div');
+        label.className = `ui orange left pointing label`;
+        var icon = document.createElement('i');
+        icon.className = 'stop icon';
+        label.appendChild(icon)
+        stopEl.appendChild(span);
+        current_stop = null;
+        current_loop = null;
+        stopEl.appendChild(label);
+        parent.append(stopEl);
+    }
+
+    function buildJedaElement(parent, tipe) {
+        var jedaEl = document.createElement('a');
+        jedaEl.dataset['tipe'] = "J";
+        jedaEl.className = `orange active item draggable ui-state-disabled`;
+        var span = document.createElement('span');
+        span.innerHTML = "Jeda";
+        jeda_index += 1;
+        var label = document.createElement('div');
+        label.className = `ui orange left pointing label`;
+        var icon = document.createElement('i');
+        icon.className = 'pause icon';
+        label.appendChild(icon)
+        jedaEl.appendChild(span);
+        // current_stop = null;
+        // current_loop = null;
+        jedaEl.appendChild(label);
+        parent.append(jedaEl);
+    }
+
+    function buildLedElement(parent, tipe) {
+        var ledEl = document.createElement('a');
+        if (tipe == 'yellow') ledEl.dataset['tipe'] = 'Y';
+        if (tipe == 'blue') ledEl.dataset['tipe'] = 'B';
+        if (tipe == 'red') ledEl.dataset['tipe'] = 'R';
+
+        var color = '';
+        if (tipe == 'yellow') color = 'yellow';
+        if (tipe == 'blue') color = 'blue';
+        if (tipe == 'red') color = 'red';
+        ledEl.className = `${color} active item draggable`;
+        if (tipe == 'green') ledEl.id = `green-${green_index}`; green_index += 1;
+        if (tipe == 'blue') ledEl.id = `blue-${blue_index}`; blue_index += 1;
+        if (tipe == 'red') ledEl.id = `red-${red_index}`; red_index += 1;
+        var led = document.createElement('div');
+        var span = document.createElement('span');
+        if (tipe == 'red') span.innerHTML = "Merah";
+        if (tipe == 'blue') span.innerHTML = "Biru";
+        if (tipe == 'yellow') span.innerHTML = "Kuning";
+        var label = document.createElement('div');
+        label.className = `ui ${color} left pointing label`;
+        var icon = document.createElement('i');
+
+        icon.className = 'lightbulb icon';
+
+        label.appendChild(icon);
+        ledEl.appendChild(span);
+        led.appendChild(label)
+        ledEl.appendChild(label);
+        parent.append(ledEl);
+    }
+
+    $('.play-btn').click((e) => {
+        e.preventDefault();
+        var rolesEl = $('#roles').find('a');
+        var roles = [];
+        var curloop = null;
+        if (current_loop != null) {
+            swal("Stop Perulangan!!!", "Mohon Stop perulangan untuk melanjutakan permainan", "error");
+            return;
+        } else {
+            rolesEl.each((index, el) => {
+                var role = $(el).data('tipe');
+                if (role == 'loop') {
+                    if (curloop == null) {
+                        var loop = {
+                            jumlah: $(el).data('jumlah'),
+                            name: 'loop'
+                        }
+                        curloop = loop
+                        roles.push(loop)
+                    } else {
+                        var loop = {
+                            jumlah: $(el).data('jumlah'),
+                            name: 'loop'
+                        }
+                        curloop = loop
+                        roles.push(loop)
+                    }
+
+                } else if (role == 'stop') {
+                    // Clean Looping here
+                    curloop = null;
+                } else {
+                    if (curloop == null) {
+                        roles.push(role);
+                    } else {
+                        if (typeof (curloop.roles) == 'undefined') {
+                            curloop.roles = [role]
+                        } else {
+                            curloop.roles.push(role)
+                        }
+                    }
+                }
+
+            })
+        }
+        var new_roles = [];
+        roles.map(role => {
+            if (typeof (role) == 'object') {
+                var roless = [];
+                var k = 0;
+                while (k < role.jumlah) {
+                    for (var i = 0; i < role.roles.length; i++) {
+                        roless.push(role.roles[i].toUpperCase());
+                    }
+                    k++;
+                }
+                roless.map(r => new_roles.push(r));
+            } else {
+                new_roles.push(role.toUpperCase());
+            }
+        })
+        console.log(new_roles);
+        var dataSend = new Object();
+        dataSend.data = new_roles;
+        fetch("http://localhost:1200/api/led/game", {
+            method: "POST",
+            body: JSON.stringify(dataSend),
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+            },
+        }).then(res => res.json()).then(res => {
+            console.log(res);
+        })
+    });
+
+    var socket = io('http://localhost:1230');
+
+    const subscribeLed = (cb) => {
+        socket.on('led', prox => cb(null, prox));
+        socket.emit('subscribeLed', 1500);
+    }
+
+    subscribeLed((err, prox) => {
+        console.log(prox);
+    })
+
+    $('.reset-btn').click((e) => {
+        e.preventDefault();
+        $('#roles').find('a').remove();
+        // fetch("http://localhost:1200/api/reset").then(res => res.json()).then(res => {
+        //     console.log(res);
+        // })
+    })
+</script>
+
+</html>
